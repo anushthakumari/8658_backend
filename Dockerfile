@@ -1,29 +1,33 @@
-# Use Node.js LTS version
-FROM node:20-alpine
+# Stage 1: Build
+FROM node:20-alpine AS build
 
-# Set working directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --production
+# Install all dependencies (including dev)
+RUN npm install
 
-# Install dev dependencies for building TS
-RUN npm install --omit=dev
-
-# Copy the rest of the source code
+# Copy source code
 COPY . .
 
 # Build TypeScript
 RUN npm run build
 
-# Expose the port your app uses
+# Stage 2: Production image
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy only built files and package.json
+COPY --from=build /app/dist ./dist
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm install --production
+
+ENV PORT=5001
 EXPOSE 5001
 
-# Set environment variable for port
-ENV PORT=5001
-
-# Start the server
 CMD ["node", "dist/server.js"]
